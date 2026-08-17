@@ -21,13 +21,13 @@ Adjust before running:
     OUTPUT_DIR            -> destination folder, will be auto-populated
                              with one subfolder per class
 """
-
 import json
 import os
 from pathlib import Path
-from urllib.parse import unquote, urlparse
-
+from urllib.parse import unquote, urlparse, parse_qs
+ 
 from PIL import Image
+
 
 # ---------------------------------------------------------------------------
 # Configuration - ADJUST HERE
