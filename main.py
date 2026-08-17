@@ -32,9 +32,9 @@ from PIL import Image
 # ---------------------------------------------------------------------------
 # Configuration - ADJUST HERE
 # ---------------------------------------------------------------------------
-LABEL_STUDIO_JSON = "label_studio_export.json"
-IMAGES_DIR = "raw_images"                 # folder with the original images
-OUTPUT_DIR = "crown_data"                 # destination folder (auto-created)
+LABEL_STUDIO_JSON = "thooth.json"
+IMAGES_DIR = "Images"                 # folder with the original images
+OUTPUT_DIR = "output"                 # destination folder (auto-created)
 PADDING_PERCENT = 5                       # extra margin around the box (0 = exact box)
 
 # ---------------------------------------------------------------------------
