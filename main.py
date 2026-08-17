@@ -91,7 +91,8 @@ def main():
     for task in tasks:
         image_field = task["data"].get("image") or task["data"].get("img")
         try:
-            local_image_paths = get_images_names(image_field)
+            local_image_paths = get_images_names(Path(image_field))
+
         except FileNotFoundError as e:
             print(f"WARNING: {e}")
             skipped += 1
