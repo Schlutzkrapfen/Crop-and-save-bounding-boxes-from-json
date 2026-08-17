@@ -91,38 +91,39 @@ def main():
     for task in tasks:
         image_field = task["data"].get("image") or task["data"].get("img")
         try:
-            local_image_path = get_images_names(image_field)
+            local_image_paths = get_images_names(image_field)
         except FileNotFoundError as e:
             print(f"WARNING: {e}")
             skipped += 1
             continue
 
-        image = Image.open(local_image_path).convert("RGB")
+        for local_image_path in local_image_paths:
+            image = Image.open(local_image_path).convert("RGB")
 
-        for annotation in task.get("annotations", []):
-            for result in annotation.get("result", []):
-                if result.get("type") != "rectanglelabels":
-                    continue
+            for annotation in task.get("annotations", []):
+                for result in annotation.get("result", []):
+                    if result.get("type") != "rectanglelabels":
+                        continue
 
-                value = result["value"]
-                labels = value.get("rectanglelabels", [])
-                if not labels:
-                    continue
-                label = labels[0]
+                    value = result["value"]
+                    labels = value.get("rectanglelabels", [])
+                    if not labels:
+                        continue
+                    label = labels[0]
 
-                cropped = crop_with_padding(
-                    image,
-                    value["x"], value["y"], value["width"], value["height"],
-                    PADDING_PERCENT,
-                )
+                    cropped = crop_with_padding(
+                        image,
+                        value["x"], value["y"], value["width"], value["height"],
+                        PADDING_PERCENT,
+                    )
 
-                class_dir = Path(OUTPUT_DIR) / label
-                class_dir.mkdir(parents=True, exist_ok=True)
+                    class_dir = Path(OUTPUT_DIR) / label
+                    class_dir.mkdir(parents=True, exist_ok=True)
 
-                counters[label] = counters.get(label, 0) + 1
-                out_name = f"{Path(local_image_path).stem}_{counters[label]:03d}.jpg"
-                cropped.save(class_dir / out_name, quality=95)
-                saved += 1
+                    counters[label] = counters.get(label, 0) + 1
+                    out_name = f"{Path(local_image_path).stem}_{counters[label]:03d}.jpg"
+                    cropped.save(class_dir / out_name, quality=95)
+                    saved += 1
 
     print(f"\nDone. {saved} cropped images saved in '{OUTPUT_DIR}/'.")
     if skipped:
