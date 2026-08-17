@@ -34,7 +34,7 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 # Configuration - ADJUST HERE
 # ---------------------------------------------------------------------------
 LABEL_STUDIO_JSON = "thooth.json"
-IMAGES_DIR = "Images"                 # folder with the original images
+IMAGES_DIR = Path("./Images")                 # folder with the original images
 OUTPUT_DIR = "output"                 # destination folder (auto-created)
 PADDING_PERCENT = 5                       # extra margin around the box (0 = exact box)
 
@@ -57,7 +57,7 @@ def get_images_names(directory: Path) -> set[Path]:
     test:set[Path] = set()
     for f in directory.iterdir():
         if f.suffix.lower() in IMAGE_EXTENSIONS:
-            test.add(Path(f.name[: -len(f.suffix)]))
+            test.add(Path(f))
     return test
 
 
@@ -89,9 +89,9 @@ def main():
     saved = 0
 
     for task in tasks:
-        image_field = task["data"].get("image") or task["data"].get("img")
         try:
-            local_image_paths = get_images_names(Path(image_field))
+            local_image_paths = get_images_names(Path(IMAGES_DIR))
+            print(local_image_paths)
 
         except FileNotFoundError as e:
             print(f"WARNING: {e}")
@@ -99,7 +99,12 @@ def main():
             continue
 
         for local_image_path in local_image_paths:
-            image = Image.open(local_image_path).convert("RGB")
+            try:
+                image = Image.open(local_image_path).convert("RGB")
+            except Image.UnidentifiedImageError:
+                print(f"WARNING something wrong with: {local_image_path}")
+                skipped += 1
+                continue
 
             for annotation in task.get("annotations", []):
                 for result in annotation.get("result", []):
@@ -123,8 +128,13 @@ def main():
 
                     counters[label] = counters.get(label, 0) + 1
                     out_name = f"{Path(local_image_path).stem}_{counters[label]:03d}.jpg"
-                    cropped.save(class_dir / out_name, quality=95)
-                    saved += 1
+                    try:
+                        cropped.save(class_dir / out_name, quality=95)
+                        saved += 1
+                    except (ValueError, OSError) as e:
+                        print(f"WARNING: {e}")
+                        skipped += 1
+
 
     print(f"\nDone. {saved} cropped images saved in '{OUTPUT_DIR}/'.")
     if skipped:
