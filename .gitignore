@@ -431,3 +431,5 @@ FodyWeavers.xsd
 #Projectspezific
 
 Images/*
+*.json
+
