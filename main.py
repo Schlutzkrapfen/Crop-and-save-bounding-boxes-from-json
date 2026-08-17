@@ -22,9 +22,7 @@ Adjust before running:
                              with one subfolder per class
 """
 import json
-import os
 from pathlib import Path
-from urllib.parse import unquote, urlparse, parse_qs
 
 from PIL import Image
 
@@ -42,23 +40,6 @@ PADDING_PERCENT = 5                       # extra margin around the box (0 = exa
 
 
 
-def get_images_names(directory: Path) -> set[Path]:
-    """Extracts the base names (without extensions) of all Images files in a directory.
-
-        Filters for files ending in common image extensions (.png, .jpg, .jpeg).
-
-        Args:
-            directory: The Path object pointing to the directory to search.
-
-        Returns:
-            A set of Path objects for all matching image files.
-        """
-
-    test:set[Path] = set()
-    for f in directory.iterdir():
-        if f.suffix.lower() in IMAGE_EXTENSIONS:
-            test.add(Path(f))
-    return test
 
 
 def crop_with_padding(image: Image.Image, x_pct, y_pct, w_pct, h_pct, padding_pct):
@@ -89,52 +70,47 @@ def main():
     saved = 0
 
     for task in tasks:
-        try:
-            local_image_paths = get_images_names(Path(IMAGES_DIR))
-            print(local_image_paths)
+        # Recupera il path/nome immagine associato a QUESTO task
+        image_field = task.get("data", {}).get("image", "")
+        image_name = Path(image_field).name  # gestisce URL tipo "/data/upload/1/xxx.jpg"
 
-        except FileNotFoundError as e:
-            print(f"WARNING: {e}")
+        local_image_path = Path(IMAGES_DIR) / image_name
+        if not local_image_path.exists():
+            print(f"WARNING: image not found: {local_image_path}")
             skipped += 1
             continue
 
-        for local_image_path in local_image_paths:
-            try:
-                image = Image.open(local_image_path).convert("RGB")
-            except Image.UnidentifiedImageError:
-                print(f"WARNING something wrong with: {local_image_path}")
-                skipped += 1
-                continue
+        try:
+            image = Image.open(local_image_path).convert("RGB")
+        except Image.UnidentifiedImageError:
+            print(f"WARNING something wrong with: {local_image_path}")
+            skipped += 1
+            continue
 
-            for annotation in task.get("annotations", []):
-                for result in annotation.get("result", []):
-                    if result.get("type") != "rectanglelabels":
-                        continue
-
-                    value = result["value"]
-                    labels = value.get("rectanglelabels", [])
-                    if not labels:
-                        continue
-                    label = labels[0]
-
-                    cropped = crop_with_padding(
-                        image,
-                        value["x"], value["y"], value["width"], value["height"],
-                        PADDING_PERCENT,
-                    )
-
-                    class_dir = Path(OUTPUT_DIR) / label
-                    class_dir.mkdir(parents=True, exist_ok=True)
-
-                    counters[label] = counters.get(label, 0) + 1
-                    out_name = f"{Path(local_image_path).stem}_{counters[label]:03d}.jpg"
-                    try:
-                        cropped.save(class_dir / out_name, quality=95)
-                        saved += 1
-                    except (ValueError, OSError) as e:
-                        print(f"WARNING: {e}")
-                        skipped += 1
-
+        for annotation in task.get("annotations", []):
+            for result in annotation.get("result", []):
+                if result.get("type") != "rectanglelabels":
+                    continue
+                value = result["value"]
+                labels = value.get("rectanglelabels", [])
+                if not labels:
+                    continue
+                label = labels[0]
+                cropped = crop_with_padding(
+                    image,
+                    value["x"], value["y"], value["width"], value["height"],
+                    PADDING_PERCENT,
+                )
+                class_dir = Path(OUTPUT_DIR) / label
+                class_dir.mkdir(parents=True, exist_ok=True)
+                counters[label] = counters.get(label, 0) + 1
+                out_name = f"{local_image_path.stem}_{counters[label]:03d}.jpg"
+                try:
+                    cropped.save(class_dir / out_name)
+                    saved += 1
+                except (ValueError, OSError) as e:
+                    print(f"WARNING: {e}")
+                    skipped += 1
 
     print(f"\nDone. {saved} cropped images saved in '{OUTPUT_DIR}/'.")
     if skipped:
@@ -142,7 +118,6 @@ def main():
     print("\nImages per class:")
     for label, count in sorted(counters.items()):
         print(f"  {label:20s}: {count}")
-
 
 if __name__ == "__main__":
     main()
